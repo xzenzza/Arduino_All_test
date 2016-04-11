@@ -1,0 +1,29 @@
+{
+    "name": "digitalWriteFast", 
+    "repository": {
+        "url": "https://github.com/watterott/Arduino-Libs.git", 
+        "type": "git"
+    }, 
+    "platforms": [
+        "atmelavr"
+    ], 
+    "frameworks": [
+        "arduino"
+    ], 
+    "version": "e926fc6d1b", 
+    "authors": [
+        {
+            "maintainer": false, 
+            "name": "Watterott electronic", 
+            "url": "https://github.com/watterott", 
+            "email": null
+        }
+    ], 
+    "keywords": [
+        "io", 
+        "pin"
+    ], 
+    "include": "digitalWriteFast", 
+    "id": 142, 
+    "description": "Fast pin access for AVR microcontrollers"
+}

@@ -1,0 +1,33 @@
+{
+    "name": "EEPromUtils", 
+    "repository": {
+        "url": "https://github.com/AMPWorks/ArduinoLibs.git", 
+        "type": "git"
+    }, 
+    "platforms": [
+        "atmelavr"
+    ], 
+    "frameworks": [
+        "arduino"
+    ], 
+    "dependencies": {
+        "frameworks": "arduino", 
+        "name": "Debug"
+    }, 
+    "version": "e2d3fd05d9", 
+    "authors": [
+        {
+            "url": null, 
+            "maintainer": false, 
+            "email": "amp@cs.stanford.edu", 
+            "name": "Adam Phelps"
+        }
+    ], 
+    "keywords": [
+        "eeprom", 
+        "crc"
+    ], 
+    "include": "EEPromUtils", 
+    "id": 120, 
+    "description": "Safer library for EEPROM access"
+}

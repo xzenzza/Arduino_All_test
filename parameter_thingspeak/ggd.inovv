@@ -1,0 +1,34 @@
+
+#define SW_UPPER D1
+#define SW_LOWER D2
+#define PUMP_IN D3
+#define PUMP_OUT D4
+
+unsigned int min_NUM = 60;
+
+const int Read_UPPER = digitalRead(SW_UPPER);
+const int Read_LOWER = digitalRead(SW_LOWER);
+
+void setup() 
+{
+  Serial.begin(115200);
+  pinMode(PUMP_IN, OUTPUT);
+  pinMode(PUMP_OUT, OUTPUT);
+
+}
+void PUMP_IN()
+{
+if(Read_UPPER == 0)
+  {
+    delay(5000)
+    digitalWrite(PUMP_OUT,HIGH);
+
+  }
+  else if(Read_UPPER == 1)
+}
+void loop()
+{
+
+
+    
+}

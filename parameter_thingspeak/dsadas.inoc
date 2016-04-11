@@ -1,0 +1,196 @@
+#define WEBDUINO_AUTH_REALM "Automação Residencial"
+#include <SPI.h>
+#include <Ethernet.h>
+#include <WebServer.h>
+#include <EthernetUdp.h>
+#include <SD.h>
+#include <livolo.h>
+
+#define REQ_BUF_SZ   20 // size of buffer used to capture HTTP requests
+EthernetUDP Udp;
+Livolo livolo(8); // transmitter connected to pin #8
+
+byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED};
+byte TargetMac[] = {0x60, 0xA4, 0x4C, 0x63, 0x61, 0xD6};  // PC's MAC address
+IPAddress ip(192, 168, 1, 5); // IP address, may need to change depending on network
+byte broadcast[] = {192, 168, 1, 255};    // Broadcast IP address
+EthernetServer server(80); // create a server at port 80
+File webFile; // handle to files on SD card
+char HTTP_req[REQ_BUF_SZ] = {0}; // buffered HTTP request stored as null terminated string
+char req_index = 0; // index into HTTP_req buffer
+WebServer webserver("", 80);
+
+void Login(WebServer &server, WebServer::ConnectionType type, char *, bool) {
+  if (webserver.checkCredentials("YWRtaW46YWRtaW4=")) {
+    webserver.httpSuccess();
+    if (type != WebServer::HEAD) {
+      P(helloMsg) = "<h1>Hello Admin</h1>";
+      webserver.printP(helloMsg);
+    }
+    StartWeb();
+  }
+  else {
+    webserver.httpUnauthorized();
+  }
+}
+void setup(){
+  pinMode(10, OUTPUT); // disable Ethernet chip
+  digitalWrite(10, HIGH);
+  Serial.begin(9600); // for debugging
+  Serial.println("Initializing SD card..."); // initialize SD card
+  if (!SD.begin(4)) {
+    Serial.println("ERROR - SD card initialization failed!"); // initialization failed
+    return; 
+  }
+  Serial.println("SUCCESS - SD card initialized.");
+  if (!SD.exists("index.htm")) { // check for index.htm file
+    Serial.println("ERROR - Can't find index.htm file!");
+    return;  // can't find index file
+  }
+  Serial.println("SUCCESS - Found index.htm file.");
+  Ethernet.begin(mac, ip); // initialize Ethernet device
+  server.begin(); // start to listen for clients
+  webserver.setDefaultCommand(&Login);
+  webserver.begin();
+  Udp.begin(9);
+}
+void loop(){
+  char buff[64];
+  int len = 64;
+  webserver.processConnection(buff, &len);
+}
+void StartWeb() {
+  EthernetClient client = server.available();  // try to get client
+  if (client) {  // got client?
+    boolean currentLineIsBlank = true;
+    while (client.connected()) {
+      if (client.available()) { // client data available to read
+        char c = client.read(); // read 1 byte (character) from client
+        Serial.write(c); // print HTTP request character to serial monitor
+        if (req_index < (REQ_BUF_SZ - 1)) {
+          HTTP_req[req_index] = c; // save HTTP request character
+          req_index++;
+        }
+        if (c == '\n' && currentLineIsBlank) {
+          // send a standard http response header
+          client.println("HTTP/1.1 200 OK");
+          client.println("Content-Type: text/html");
+          client.println("Connnection: close");
+          client.println();
+          // if GET request
+          if (StrContains(HTTP_req, "GET / ") || StrContains(HTTP_req, "index.htm")) {
+            webFile = SD.open("index.htm"); // open web page file
+          }
+          else if (StrContains(HTTP_req, "1Andar.htm")) {
+            webFile = SD.open("1Andar.htm"); // open web page file
+          }
+          else if (StrContains(HTTP_req, "2Andar.htm")) {
+            webFile = SD.open("2Andar.htm"); // open web page file
+          }
+          else if (StrContains(HTTP_req, "3Andar.htm")) {
+            webFile = SD.open("3Andar.htm"); // open web page file
+          }
+          // if POST request
+          if (StrContains(HTTP_req, "POST /")){
+            String POST = "";
+            while(client.available()){
+              c = client.read();
+              POST += c;
+            } 
+            if(StrContains(HTTP_req, "/livolo")) {
+              String controlvalue = POST.substring(0, POST.indexOf('&'));
+              String buttonvalue = POST.substring(POST.indexOf('&') + 1, POST.length());
+              String control = controlvalue.substring(controlvalue.indexOf('=') + 1, controlvalue.length());
+              String button = buttonvalue.substring(buttonvalue.indexOf('=') + 1, buttonvalue.length());
+              livolo.sendButton(control.toInt(), button.toInt());
+            }
+            else if (POST != "") {
+              String cmdname = POST.substring(0, POST.indexOf('&'));
+              String cmdvalue = POST.substring(POST.indexOf('&') + 1, POST.length());
+              String name = cmdname.substring(cmdname.indexOf('=') + 1, cmdname.length());
+              String value = cmdvalue.substring(cmdvalue.indexOf('=') + 1, cmdvalue.length());
+              if (name == "Garagem") {
+                //command
+              }
+              if (name == "Portao") {
+                //command
+              }
+              if (name == "Alarme") {
+                //command
+              }
+              if (name == "Cobertura") {
+                //command
+              }
+              if (name == "PC" && value.toInt() == 1) {
+                  WOL(TargetMac);
+              }
+            }
+            XML_response(client); // send XML file 
+          }
+          if (webFile) { // send web page to client
+            while(webFile.available()) {
+              client.write(webFile.read());
+            }
+            webFile.close();
+          }
+          req_index = 0;
+          StrClear(HTTP_req, REQ_BUF_SZ);
+          break;
+        }
+        if (c == '\n') {
+          currentLineIsBlank = true;
+        } 
+        else if (c != '\r') {
+          currentLineIsBlank = false;
+        }
+      }
+    }
+    delay(1); // give the web browser time to receive the data
+    client.stop(); // close the connection
+  }
+}
+void StrClear(char *str, char length){
+  for (int i = 0; i < length; i++) {
+    str[i] = 0;
+  }
+}
+void XML_response(EthernetClient cl) { // send the XML file
+  cl.print("<?xml version = \"1.0\"?>");
+  cl.print("<response>");
+  cl.print("Ok");
+  cl.print("</response>");
+}
+void WOL(byte mac[]) {
+  byte preamble[] = {
+    0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF    };
+  int i = 0;
+  Udp.beginPacket(broadcast, 9);
+  Udp.write(preamble, sizeof preamble);
+  while (i<16){
+    Udp.write(TargetMac, sizeof TargetMac);
+    i++;
+  }
+  Udp.endPacket();
+}
+char StrContains(char *str, char *sfind){
+  char found = 0;
+  char index = 0;
+  char len;
+  len = strlen(str);
+  if (strlen(sfind) > len) {
+    return 0;
+  }
+  while (index < len) {
+    if (str[index] == sfind[found]) {
+      found++;
+      if (strlen(sfind) == found) {
+        return 1;
+      }
+    }
+    else {
+      found = 0;
+    }
+    index++;
+  }
+  return 0;
+}
